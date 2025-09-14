@@ -33,10 +33,10 @@ def propagate_forward_wlc(q0_spatial, w, theta_grid, length, n_substeps, D_theta
     ang_mul_half = np.exp(-D_theta * (m**2) * (ds/2))
     #breakpoint()
     if q0_spatial.ndim == 2:
-        q_curr = np.repeat(q0_spatial[:, :, None], Ntheta, axis=2).astype(np.complex128)
+        q_curr = np.repeat(q0_spatial[:, :, None], Ntheta, axis=2).astype(np.complex64)
     else:
-        q_curr = q0_spatial.astype(np.complex128)
-    q_full = np.zeros((n_substeps, Nx, Ny, Ntheta), dtype=np.complex128)
+        q_curr = q0_spatial.astype(np.complex64)
+    q_full = np.zeros((n_substeps, Nx, Ny, Ntheta), dtype=np.complex64)
     w_arr = w if w.ndim==3 else np.repeat(w[:,:,None], Ntheta, axis=2)
     for i in range(n_substeps):
         if mode == 'thermal':
@@ -60,10 +60,10 @@ def propagate_backward_wlc(q0_spatial, w, theta_grid, length, n_substeps, D_thet
 
 
     if q0_spatial.ndim == 2:
-        q_curr = np.repeat(q0_spatial[:, :, None], Ntheta, axis=2).astype(np.complex128)
+        q_curr = np.repeat(q0_spatial[:, :, None], Ntheta, axis=2).astype(np.complex64)
     else:
-        q_curr = q0_spatial.astype(np.complex128)
-    q_full = np.zeros((n_substeps, Nx, Ny, Ntheta), dtype=np.complex128)
+        q_curr = q0_spatial.astype(np.complex64)
+    q_full = np.zeros((n_substeps, Nx, Ny, Ntheta), dtype=np.complex64)
     w_arr = w if w.ndim==3 else np.repeat(w[:,:,None], Ntheta, axis=2)
 
     for i in range(n_substeps):
@@ -82,7 +82,7 @@ def propagate_closed(backbone_seq, rho0_per_class, w_per_class, w_sc, ang_weight
 
 
     qf_list = [None]*N
-    q_init_spatial = np.ones(gridshape[:2], dtype = np.complex128)
+    q_init_spatial = np.ones(gridshape[:2], dtype = np.complex64)
     theta_grid = np.linspace(0, 2*np.pi, len(u_grid))
     eta_1_full = np.random.randn(Nx, Ny, N, n_quad_per_rod) * np.sqrt(2)
     eta_2_full = np.random.randn(Nx, Ny, N, n_quad_per_rod) * np.sqrt(2)
@@ -91,7 +91,7 @@ def propagate_closed(backbone_seq, rho0_per_class, w_per_class, w_sc, ang_weight
 
 
     #Propagate sidechains:
-    q_sc_forward = {key: np.zeros((n_quad_per_rod, *gridshape), dtype=np.complex128) for key in ['Nsc', 'Csc']}
+    q_sc_forward = {key: np.zeros((n_quad_per_rod, *gridshape), dtype=np.complex64) for key in ['Nsc', 'Csc']}
 
     for idx in ['Nsc', 'Csc']:
         eta_1 = eta_sc1_full[idx]
@@ -116,8 +116,8 @@ def propagate_closed(backbone_seq, rho0_per_class, w_per_class, w_sc, ang_weight
         qf_list[idx] = propagate_forward_wlc(q_init_spatial, w_per_class[res], theta_grid, length_rod, n_quad_per_rod, D_theta, Lx, Ly, mu_forward, dt, qf_previous[idx], mode)
         q_init_spatial = np.tensordot(qf_list[idx][-1] * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))
     qb_list = [None]*N
-    q_prev_spatial = np.ones(gridshape, dtype = np.complex128)
-    q_sc_bb = {key: np.zeros(gridshape, dtype = np.complex128) for key in ['Nsc', 'Csc']}
+    q_prev_spatial = np.ones(gridshape, dtype = np.complex64)
+    q_sc_bb = {key: np.zeros(gridshape, dtype = np.complex64) for key in ['Nsc', 'Csc']}
     for idx in range(N-1, -1, -1):
         eta_1 = eta_1_full[:, :, idx, :]
         eta_2 = eta_2_full[:, :, idx, :]
@@ -147,7 +147,7 @@ def propagate_closed(backbone_seq, rho0_per_class, w_per_class, w_sc, ang_weight
             q_sc_bb['Csc'] += np.tensordot(q_prev_spatial * ang_weights[None,None,:], geom_kernel, axes=([2],[0])) * np.tensordot(qf_list[idx-1][-1] * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))
         elif idx % 3 == 0:
             q_sc_bb['Nsc'] += np.tensordot(q_prev_spatial * ang_weights[None,None,:], geom_kernel, axes=([2],[0])) * np.tensordot(qf_list[idx-1][-1] * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))
-    q_sc_bb_full = {key: np.zeros((n_quad_per_rod, *gridshape), dtype = np.complex128) for key in ['Nsc', 'Csc']}
+    q_sc_bb_full = {key: np.zeros((n_quad_per_rod, *gridshape), dtype = np.complex64) for key in ['Nsc', 'Csc']}
     for idx in ['Nsc', 'Csc']:
         eta_1 = eta_sc1_full[idx][:, : , ::-1]
         eta_2 = eta_sc2_full[idx][:, : , ::-1]
