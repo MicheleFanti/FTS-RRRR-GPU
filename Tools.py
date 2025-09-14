@@ -174,7 +174,6 @@ def plot_densities(
     gamma, relax_mu, rhop0, eps_yukawa, bjerrum_length, ang_weights, outdir
 ):
     import matplotlib.pyplot as plt
-    import numpy as np
     import os
     import math
 
