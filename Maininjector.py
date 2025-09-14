@@ -6,6 +6,7 @@ from PropagationStoch import *
 import os
 import time 
 
+
 def main(sequence, epsilon_hb, vchi_pp, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length, decay_es, rhop0, max_iter, gamma, salt_fraction, gridshape, outdir):
     b_length = 0.38/3
     n_quad_per_rod = 3
@@ -175,8 +176,9 @@ def main(sequence, epsilon_hb, vchi_pp, vchi_ps, eps_yukawa, decay_yukawa, bjerr
         if it % 1 == 0:
             print(f'Iter {it} | Elapsed: {time.time()- start}|LDVC mean/max/min={LDVC_mean:.4f}/{LDVC_max:.4f}/{LDVC_min:.4f}, gamma={c_gamma:.4f}, vchi_ps = {vchi_ps}')
         if it % 25 == 0:
+            os.system('clear')   # for Linux/macOS
             plot_densities(sequence, {**rhobb_class, **rhosc_class}, rhoS, gridshape, it,
-                        0.0, vchi_ps, gamma, 0.0, rhop0,
+                        vchi_pp, vchi_ps, gamma, 0.0, rhop0,
                         eps_yukawa, bjerrum_length, ang_weights,
                         plots_folder)
         if it > eq_iters and ((it - eq_iters) % save_interval == 0):
