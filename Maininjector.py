@@ -14,7 +14,7 @@ def main(sequence, epsilon_hb, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length
     
     Nx, Ny, Nang = gridshape
     box_lengths = tuple(d * dx for d in gridshape[:2])
-    V = np.prod(box_lengths)
+    V = np.prod(np.array(box_lengths))
     dV = V / (Nx * Ny)
     spat_weights = dV*np.ones((Nx, Ny))/V
     x = np.linspace(-box_lengths[0]/2,box_lengths[0]/2,Nx)
