@@ -43,8 +43,7 @@ if __name__ == "__main__":
             print(f"\n[{i+1}/{len(param_combinations)}] {sequence}, rhop0={rhop0}, salt={salt_fraction}, "
                   f"gamma={gamma}, eps_yukawa={eps_yukawa}, epsilon_hb={epsilon_hb}")
 
-            results = main(sequence, epsilon_hb, vchi_pp, vchi_ps, eps_yukawa, decay_yukawa, 
-                           bjerrum, decay_es, rhop0, max_iter, gamma, salt_fraction, gridshape, outdir)
+            results = main(sequence, epsilon_hb, vchi_pp, vchi_ps, eps_yukawa, decay_yukawa, bjerrum, decay_es, rhop0, max_iter, gamma, salt_fraction, gridshape, outdir)
 
             PartialsHystory, DeltaRhoHystory, LDVCs, LDVCmaxs, LDVCmins, Broken, PS = results
 

@@ -6,7 +6,7 @@ from PropagationStoch import *
 import os
 import time 
 
-def main(sequence, epsilon_hb, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length, decay_es, rhop0, max_iter, gamma, salt_fraction, gridshape, outdir):
+def main(sequence, epsilon_hb, vchi_pp, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length, decay_es, rhop0, max_iter, gamma, salt_fraction, gridshape, outdir):
     b_length = 0.38/3
     n_quad_per_rod = 3
     dx = 0.38/(3*n_quad_per_rod)
