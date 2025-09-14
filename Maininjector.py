@@ -6,18 +6,18 @@ from PropagationStoch import *
 import os
 import time 
 
-def main(sequence, epsilon_hb, vchi_pp, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length, decay_es, rhop0, max_iter, gamma, salt_fraction, gridshape, outdir):
+def main(sequence, epsilon_hb, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length, decay_es, rhop0, max_iter, gamma, salt_fraction, gridshape, outdir):
     b_length = 0.38/3
     n_quad_per_rod = 3
     dx = 0.38/(3*n_quad_per_rod)
-
+    
     l_hb = 0.18
     sigma_hb = 0.02 
     sigma_ev = 0.02
-
+    
     Nx, Ny, Nang = gridshape
     box_lengths = tuple(d * dx for d in gridshape[:2])
-    V = np.prod(box_lengths)
+    V = np.prod(np.array(box_lengths))
     dV = V / (Nx * Ny)
     spat_weights = dV*np.ones((Nx, Ny))/V
     x = np.linspace(-box_lengths[0]/2,box_lengths[0]/2,Nx)
@@ -204,8 +204,8 @@ def main(sequence, epsilon_hb, vchi_pp, vchi_ps, eps_yukawa, decay_yukawa, bjerr
             prop_fname = os.path.join(propagator_folder, f"prop_iter_{save_idx:04d}.npz")
             try:
                 prop_dict = {
-                    "q_fw": [q.astype(np.complex128) for q in q_prev_fw_list],
-                    "q_bw": [q.astype(np.complex128) for q in q_prev_bw_list],
+                    "q_fw": [q.astype(np.complex64) for q in q_prev_fw_list],
+                    "q_bw": [q.astype(np.complex64) for q in q_prev_bw_list],
                 }
                 np.savez_compressed(prop_fname, **prop_dict)
                 print(f"Saved propagators at iter {it} -> {prop_fname}")
