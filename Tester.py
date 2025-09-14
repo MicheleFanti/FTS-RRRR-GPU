@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     sequences = ["QKLVFFAE"]#, "GVVHGVTTVA", "SLSLLSLSLLS"]
     
-    gridshape = (225, 225, 80)  
+    gridshape = (225, 225, 60)  
     box_lengths = (225, 225) 
     max_iter = 2000  
     dx = 1.5
