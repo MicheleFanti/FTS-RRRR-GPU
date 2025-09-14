@@ -1,6 +1,6 @@
 import os
 import itertools
-import numpy as np
+import cupy as np
 from Maininjector import main
 
 if __name__ == "__main__":

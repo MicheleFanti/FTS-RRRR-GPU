@@ -1,5 +1,5 @@
-import numpy as np
-from numpy.fft import fft, ifft, fft2, ifft2, fftfreq
+import cupy as np
+from cupy.fft import fft, ifft, fft2, ifft2, fftfreq
 from collections import Counter
 
 def strang_step_wlc(q, w, ds, KX, KY, UX, UY, ang_mul_half):
