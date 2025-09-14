@@ -1,15 +1,12 @@
 from re import A
 import sys
-import numpy as np
+import cupy as np
 from collections import Counter
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.colors as mcolors
 
 _plot_counter = 0 
-import numpy as np
-
-import numpy as np
 
 def initialize_alternative_rho(sequence, rho_class, rho0_per_class,
                                gridshape, spat_weights, ang_weights,
