@@ -7,7 +7,6 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.colors as mcolors
 
 _plot_counter = 0 
-
 def initialize_alternative_rho(sequence, rho_class, rho0_per_class,
                                gridshape, spat_weights, ang_weights,
                                droplet_boost=1.0, droplet_sigma_frac=0.08,
@@ -56,19 +55,25 @@ def lebedev_grid(N_ang):
     w = np.ones(N_ang) * (2*np.pi / N_ang)  # uniform weights
     return u, w
 
-def gaussian_realspace(grid, eps, l):
+def gaussian_realspace(grid, spat_weights, l, sigma):
     X, Y = grid
     r = np.sqrt(X**2 + Y**2)
-    return eps * np.exp(-(r - l)**2)
+    if l != 0:
+        f = np.exp(-((r - l)**2)/(2*sigma**2))
+    else: 
+        f = np.exp(-((r)**2)/(2*sigma**2))
+        f[r < sigma] = 0
+    f /= np.sum(f*spat_weights)
+    return  f
 
-def yukawa_realspace(grid, eps, decay, dx_min = 1e-1):
+def yukawa_realspace(grid, spat_weights, eps, decay, dx_min = 1e-1):
     X, Y = grid
     r = np.sqrt(X**2 + Y**2)
     r[r < dx_min] = dx_min  
     return eps * np.exp(-r/decay)/r
 
-def make_3D_kernel_fft(realspace_func, grid, *params):
-    V_real = realspace_func(grid, *params)
+def make_3D_kernel_fft(realspace_func, grid, spat_weights, *params):
+    V_real = realspace_func(grid, spat_weights, *params)
     V_k = np.fft.fftn(V_real)
     return V_k, V_real
 
@@ -80,8 +85,9 @@ def build_angular_kernel(N_ang, u_vectors, theta_0, ang_weights):
 
     kernel /= np.sum(np.sum(kernel*ang_weights, axis = -1)*ang_weights, axis = -1) # normalization
     return kernel
+
 def build_exp_angular_kernel(N_ang, u_vectors, theta_0, ang_weights):
-    sigma = np.sin(theta_0)*0.25
+    sigma = 0.2
     kernel = np.zeros((N_ang, N_ang))
     for idxu, u in enumerate(u_vectors): 
         for idxv, v in enumerate(u_vectors): 
@@ -168,7 +174,6 @@ def compute_c(sequence, charges, rho_class, rho_s, residue_classes, ang_weights,
     for species in rho_s:
         c += rho_s[species] * charges[species]
     return c
-
 def plot_densities(
     sequence, rho_class, rhoS, gridshape, it, vchi_pp, vchi_ps,
     gamma, relax_mu, rhop0, eps_yukawa, bjerrum_length, ang_weights, outdir

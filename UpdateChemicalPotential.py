@@ -1,4 +1,4 @@
-import sched
+
 import cupy as np
 class SCFTUpdater:
     def __init__(self, species_order, gridshape, vchi_pp, vchi_ps, epsilon_hb,bjerrum_length, hydro_charges, hydro_lambdas, es_charges,
@@ -6,6 +6,7 @@ class SCFTUpdater:
         self.species_order = species_order
         self.gridshape = gridshape
         self.vchi_ps = vchi_ps
+        self.vchi_pp = vchi_pp
         self.epsilon_hb = epsilon_hb
         self.bjerrum_length = bjerrum_length
         self.hydro_charges = hydro_charges
@@ -34,6 +35,8 @@ class SCFTUpdater:
         xi =  xi_prior + 0.3*(1-1/rho_tot)
         wP_trial = {}
         for species in rho_bb_new:
+            comp_vchi_pp = self.vchi_pp*(rhoPnew)
+            comp_vchi_ps = rhoS_total*self.vchi_ps
             if species != "pb":
                 h_as_total = np.zeros_like(rhoPnew)
                 for a_key in h_as:
@@ -41,21 +44,20 @@ class SCFTUpdater:
                     if idx_in_res is not None:
                         h_as_total += self.hydro_lambdas[a_key]*self.hydro_charges[a_key][idx_in_res]*ihath_a[a_key]
             # Compute each component separately for summary
-                comp_vchi_ps = rhoS_total*self.vchi_ps
                 comp_h_as = h_as_total
                 comp_es = self.bjerrum_length* self.es_charges[species]*ihatc
-                wP_trial[species] = np.broadcast_to(comp_vchi_ps[..., None] + comp_h_as[..., None] + comp_es[..., None] + xi[..., None], gridshape).copy()
+                wP_trial[species] = np.broadcast_to(comp_vchi_ps[..., None] + comp_vchi_pp[..., None] + comp_h_as[..., None] + comp_es[..., None] + xi[..., None], gridshape).copy()
                 wP_trial[species] -= w_prior_bb[species]
             elif species == "pb":
-                comp_vchi_ps = rhoS_total*self.vchi_ps
-                wP_trial[species] = np.broadcast_to(comp_vchi_ps[..., None] + xi[..., None], gridshape).copy()
+                wP_trial[species] = np.broadcast_to(comp_vchi_ps[..., None] + xi[..., None] + comp_vchi_pp[..., None], gridshape).copy()
                 wP_trial[species] -= w_prior_bb[species]
         
         wSc_trial = {} 
         for sc in rho_sc_new:
+            comp_vchi_pp = self.vchi_pp*(rhoPnew)
             contrib_rhoS = rhoS_total * self.vchi_ps
             contrib_hb = -0.5*self.epsilon_hb*np.fft.ifft2(np.fft.fft2(np.tensordot(rho_sc_new['Csc' if sc=='Nsc' else 'Nsc']*ang_weights[None,None,:], A_hb, axes=([2],[1])), axes=(0,1))*K_hb[..., None], axes=(0,1)).real*(dx**2)
-            wSc_trial[sc] = gamma*(contrib_hb + np.broadcast_to(contrib_rhoS[..., None] + xi[..., None], gridshape).copy())
+            wSc_trial[sc] = gamma*(contrib_hb + np.broadcast_to(contrib_rhoS[..., None] + xi[..., None] + comp_vchi_pp[..., None], gridshape).copy())
             wSc_trial[sc] -= w_prior_sc[sc]
             
         wS_trial = {}

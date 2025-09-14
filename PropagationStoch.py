@@ -2,6 +2,7 @@ import cupy as np
 from cupy.fft import fft, ifft, fft2, ifft2, fftfreq
 from collections import Counter
 
+
 def strang_step_wlc(q, w, ds, KX, KY, UX, UY, ang_mul_half):
     q = ifft(fft(q, axis=2, norm='ortho') * ang_mul_half[None,None,:], axis=2, norm='ortho')
     phase_half = np.exp(-1j*(KX[...,None]*UX[None,None,:] + KY[...,None]*UY[None,None,:])*(ds/2))
@@ -74,7 +75,7 @@ def propagate_backward_wlc(q0_spatial, w, theta_grid, length, n_substeps, D_thet
         q_full[i] = q_curr
     return np.real(q_full)
 
-def propagate_closed(backbone_seq, rho0_per_class, w_per_class, w_sc, ang_weights, spat_weights, u_grid, gridshape, length_rod, n_quad_per_rod, D_theta, Lx, Ly, dt, qf_previous, qb_previous, qf_prev_sc, qb_prev_sc, geom_kernel, mode):
+def propagate_closed(backbone_seq, rho0_per_class, w_per_class, w_sc, ang_weights, spat_weights, u_grid, gridshape, length_rod, n_quad_per_rod, D_theta, Lx, Ly, dt, qf_previous, qb_previous, qf_prev_sc, qb_prev_sc, geom_kernel, antiparallel_kernel, mode):
     seq = list(backbone_seq)
     Nx, Ny, Ntheta = gridshape
     N = len(seq)
@@ -102,7 +103,7 @@ def propagate_closed(backbone_seq, rho0_per_class, w_per_class, w_sc, ang_weight
 
     #Propagate main backbone forward
     for idx in range(N):
-        eta_1 = eta_1_full[:, :, idx, :]   # pick residue idx
+        eta_1 = eta_1_full[:, :, idx, :]   
         eta_2 = eta_2_full[:, :, idx, :]
         mu_forward = (eta_1 + 1j*eta_2)/np.sqrt(2)
         mu_forward = np.broadcast_to(mu_forward[:, :, None, :], (Nx, Ny, Ntheta, n_quad_per_rod))
@@ -118,6 +119,8 @@ def propagate_closed(backbone_seq, rho0_per_class, w_per_class, w_sc, ang_weight
     qb_list = [None]*N
     q_prev_spatial = np.ones(gridshape, dtype = np.complex64)
     q_sc_bb = {key: np.zeros(gridshape, dtype = np.complex64) for key in ['Nsc', 'Csc']}
+    prev = np.zeros(gridshape, dtype = np.complex64) 
+    curr = np.zeros(gridshape, dtype = np.complex64) 
     for idx in range(N-1, -1, -1):
         eta_1 = eta_1_full[:, :, idx, :]
         eta_2 = eta_2_full[:, :, idx, :]
@@ -138,15 +141,16 @@ def propagate_closed(backbone_seq, rho0_per_class, w_per_class, w_sc, ang_weight
         qb_list[idx] = propagate_backward_wlc(q_prev_spatial, w_per_class[res], theta_grid, length_rod, n_quad_per_rod, D_theta, Lx, Ly, mu_backward, dt, qb_previous[idx], mode)
         q_prev_spatial = np.tensordot(qb_list[idx][-1] * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))
 
-        
         if idx == 0:
             q_sc_bb['Nsc'] += np.tensordot(q_prev_spatial * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))
         elif idx == N-1:
             q_sc_bb['Csc'] += np.tensordot(qf_list[N-1][-1] * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))
         elif idx % 3 == 2:
-            q_sc_bb['Csc'] += np.tensordot(q_prev_spatial * ang_weights[None,None,:], geom_kernel, axes=([2],[0])) * np.tensordot(qf_list[idx-1][-1] * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))
+            curr = np.tensordot(((prev/(np.sum(prev*ang_weights, axis = -1)[..., None])))*ang_weights[None, None, :], antiparallel_kernel, axes = ([2], [0]))
+            q_sc_bb['Csc'] += np.tensordot(q_prev_spatial * ang_weights[None,None,:], geom_kernel, axes=([2],[0])) * np.tensordot(qf_list[idx-1][-1] * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))*curr
         elif idx % 3 == 0:
-            q_sc_bb['Nsc'] += np.tensordot(q_prev_spatial * ang_weights[None,None,:], geom_kernel, axes=([2],[0])) * np.tensordot(qf_list[idx-1][-1] * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))
+            prev = np.tensordot(q_prev_spatial * ang_weights[None,None,:], geom_kernel, axes=([2],[0])) * np.tensordot(qf_list[idx-1][-1] * ang_weights[None,None,:], geom_kernel, axes=([2],[0]))
+            q_sc_bb['Nsc'] += prev
     q_sc_bb_full = {key: np.zeros((n_quad_per_rod, *gridshape), dtype = np.complex64) for key in ['Nsc', 'Csc']}
     for idx in ['Nsc', 'Csc']:
         eta_1 = eta_sc1_full[idx][:, : , ::-1]

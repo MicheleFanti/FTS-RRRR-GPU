@@ -6,15 +6,18 @@ from PropagationStoch import *
 import os
 import time 
 
-def main(sequence, epsilon_hb, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length, decay_es, rhop0, max_iter, gamma, salt_fraction, gridshape, outdir):
+def main(sequence, epsilon_hb, vchi_pp, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length, decay_es, rhop0, max_iter, gamma, salt_fraction, gridshape, outdir):
     b_length = 0.38/3
     n_quad_per_rod = 3
     dx = 0.38/(3*n_quad_per_rod)
+
     l_hb = 0.18
-    
+    sigma_hb = 0.02 
+    sigma_ev = 0.02
+
     Nx, Ny, Nang = gridshape
     box_lengths = tuple(d * dx for d in gridshape[:2])
-    V = np.prod(np.array(box_lengths))
+    V = np.prod(box_lengths)
     dV = V / (Nx * Ny)
     spat_weights = dV*np.ones((Nx, Ny))/V
     x = np.linspace(-box_lengths[0]/2,box_lengths[0]/2,Nx)
@@ -32,12 +35,15 @@ def main(sequence, epsilon_hb, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length
     charges, lambdas = gather_charges_and_lambdas(sequence)
     es_charges = get_es_charges(sequence)
     
-    V_hydro, _ = make_3D_kernel_fft(yukawa_realspace, grid, eps_yukawa, decay_yukawa)
-    V_es, _ = make_3D_kernel_fft(yukawa_realspace, grid,  bjerrum_length, decay_es)
-    V_hb, _    = make_3D_kernel_fft(gaussian_realspace, grid,  epsilon_hb, l_hb)
+    V_hydro, _ = make_3D_kernel_fft(yukawa_realspace, grid, spat_weights, eps_yukawa, decay_yukawa)
+    V_es, _ = make_3D_kernel_fft(yukawa_realspace, grid, spat_weights, bjerrum_length, decay_es)
+    V_hb, _    = make_3D_kernel_fft(gaussian_realspace, grid, spat_weights,  l_hb, sigma_hb)
+    V_ev, _ = make_3D_kernel_fft(gaussian_realspace,  grid, spat_weights, 0, sigma_ev)
+    
     A_hb = build_angular_kernel(Nang, u_vectors, np.pi, ang_weights)
     geom_kernel = build_exp_angular_kernel(Nang, u_vectors, (2/3)*np.pi, ang_weights)
-
+    antiparall_kernel = build_exp_angular_kernel(Nang, u_vectors, np.pi, ang_weights)
+    
     DeltaRhoHystory = []
     PartialsHystory = {k: [0] * (max_iter+1) for k in rho0_all}
     c_gamma = gamma
@@ -47,8 +53,8 @@ def main(sequence, epsilon_hb, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length
     rhoS = {}
     rho0_sv = {}
     total_charge = sum(es_charges.get(res, 0.0) for res in sequence)
-    eq_iters = 1500
-    prod_iters = 500
+    eq_iters = 1700
+    prod_iters = 510
     save_interval = 3
     max_iter = eq_iters + prod_iters
 
@@ -123,7 +129,7 @@ def main(sequence, epsilon_hb, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length
     h_as = compute_has(sequence, charges, rhobb_class, res_classes, ang_weights, gridshape)
     c_field = compute_c(sequence, es_charges, rhobb_class, rhoS, res_classes, ang_weights, gridshape)
     
-    mixer = SCFTUpdater(res_classes, gridshape, 0.0, vchi_ps,epsilon_hb, bjerrum_length, charges, lambdas, es_charges, n_history=5)
+    mixer = SCFTUpdater(res_classes, gridshape, vchi_pp, vchi_ps, epsilon_hb, bjerrum_length, charges, lambdas, es_charges, n_history=5)
     w_chains, w_sidechains, w_solvent, xi = mixer.zero_update(rhobb_class, rhoS, rhosc_class, gamma, ang_weights, spat_weights, V_hydro, V_hb, A_hb, V_es, h_as, c_field, box_lengths, gridshape)
 
     q_prev_fw_list = np.zeros((len(list(residue_class_per_segment)), n_quad_per_rod, *gridshape), dtype = np.complex128)
@@ -138,9 +144,9 @@ def main(sequence, epsilon_hb, vchi_ps, eps_yukawa, decay_yukawa, bjerrum_length
 
         w_chains, w_sidechains, w_solvent, xi, deviations = mixer.linear_descent(xi, w_chains, w_solvent, w_sidechains, rhobb_class, rhoS, rhosc_class, gamma,ang_weights,spat_weights, V_hydro, V_hb, A_hb, V_es, h_as, c_field, box_lengths, gridshape)
         if it == 1:
-            rhobb_class, rhosc_class, Q, q_prev_fw_list, q_prev_bw_list,q_prev_fwsc_list, q_prev_bwsc_list = propagate_closed(residue_class_per_segment, rho0_all, w_chains, w_sidechains, ang_weights, spat_weights, u_vectors, gridshape, b_length, n_quad_per_rod, D_theta = 0.48**(-1), Lx=dx*Nx, Ly = dx*Ny, dt=0.01, qf_previous= q_prev_fw_list, qb_previous= q_prev_bw_list, qf_prev_sc=q_prev_fwsc_list, qb_prev_sc=q_prev_bwsc_list, geom_kernel = geom_kernel, mode = 'deterministic')
+            rhobb_class, rhosc_class, Q, q_prev_fw_list, q_prev_bw_list,q_prev_fwsc_list, q_prev_bwsc_list = propagate_closed(residue_class_per_segment, rho0_all, w_chains, w_sidechains, ang_weights, spat_weights, u_vectors, gridshape, b_length, n_quad_per_rod, D_theta = 0.48**(-1), Lx=dx*Nx, Ly = dx*Ny, dt=0.01, qf_previous= q_prev_fw_list, qb_previous= q_prev_bw_list, qf_prev_sc=q_prev_fwsc_list, qb_prev_sc=q_prev_bwsc_list, geom_kernel = geom_kernel, antiparallel_kernel=  antiparall_kernel, mode = 'deterministic')
         else:
-            rhobb_class, rhosc_class, Q, q_prev_fw_list, q_prev_bw_list,q_prev_fwsc_list, q_prev_bwsc_list = propagate_closed(residue_class_per_segment, rho0_all, w_chains, w_sidechains,ang_weights, spat_weights, u_vectors, gridshape, b_length, n_quad_per_rod, D_theta = 0.48**(-1), Lx=dx*Nx, Ly = dx*Ny, dt=0.01, qf_previous = q_prev_fw_list, qb_previous = q_prev_bw_list, qf_prev_sc=q_prev_fwsc_list, qb_prev_sc=q_prev_bwsc_list,geom_kernel = geom_kernel, mode = 'thermal')
+            rhobb_class, rhosc_class, Q, q_prev_fw_list, q_prev_bw_list,q_prev_fwsc_list, q_prev_bwsc_list = propagate_closed(residue_class_per_segment, rho0_all, w_chains, w_sidechains,ang_weights, spat_weights, u_vectors, gridshape, b_length, n_quad_per_rod, D_theta = 0.48**(-1), Lx=dx*Nx, Ly = dx*Ny, dt=0.01, qf_previous = q_prev_fw_list, qb_previous = q_prev_bw_list, qf_prev_sc=q_prev_fwsc_list, qb_prev_sc=q_prev_bwsc_list,geom_kernel = geom_kernel, antiparallel_kernel=  antiparall_kernel,mode = 'thermal')
         for solvents in ['plus', 'minus', 'neutral']:
             rhoS[solvents] =  rho0_sv[solvents]*np.exp(-w_solvent[solvents])/(np.sum(spat_weights*np.exp(-w_solvent[solvents])))
 
