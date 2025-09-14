@@ -184,30 +184,29 @@ def main(sequence, epsilon_hb, vchi_pp, vchi_ps, eps_yukawa, decay_yukawa, bjerr
         if it > eq_iters and ((it - eq_iters) % save_interval == 0):
             save_idx = it
 
-            # --- Save densities ---
-            save_fname = os.path.join(npz_folder, f"dens_iter_{save_idx:04d}.npz")
+            # --- Save only rhoS densities ---
+            save_fname = os.path.join(npz_folder, f"rhoS_iter_{save_idx:04d}.npz")
             try:
                 save_dict = {}
-                for k, arr in {**rhobb_class, **rhosc_class}.items():
-                    save_dict[f"rho_{k}"] = arr.astype(np.float32) if np.isrealobj(arr) else arr
                 for s_key, s_arr in rhoS.items():
-                    save_dict[f"rhoS_{s_key}"] = s_arr.astype(np.float32) if np.isrealobj(s_arr) else s_arr
+                    # convert cupy array to numpy
+                    save_dict[f"rhoS_{s_key}"] = s_arr.get().astype(np.float32) if np.isrealobj(s_arr) else s_arr.get()
 
                 save_dict["iteration"] = np.array([it])
                 save_dict["Q"] = np.array([Q])
                 save_dict["LDVC_mean"] = np.array([LDVC_mean])
 
                 np.savez_compressed(save_fname, **save_dict)
-                print(f"Saved densities at iter {it} -> {save_fname}")
+                print(f"Saved rhoS densities at iter {it} -> {save_fname}")
             except Exception as e:
-                print(f"Warning: failed to save densities at iter {it}: {e}")
+                print(f"Warning: failed to save rhoS densities at iter {it}: {e}")
 
-            # --- Save propagators ---
+            # --- Save propagators only ---
             prop_fname = os.path.join(propagator_folder, f"prop_iter_{save_idx:04d}.npz")
             try:
                 prop_dict = {
-                    "q_fw": [q.astype(np.complex64) for q in q_prev_fw_list],
-                    "q_bw": [q.astype(np.complex64) for q in q_prev_bw_list],
+                    "q_fw": [q.get().astype(np.complex64) for q in q_prev_fw_list],
+                    "q_bw": [q.get().astype(np.complex64) for q in q_prev_bw_list],
                 }
                 np.savez_compressed(prop_fname, **prop_dict)
                 print(f"Saved propagators at iter {it} -> {prop_fname}")
